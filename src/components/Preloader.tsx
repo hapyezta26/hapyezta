@@ -13,12 +13,7 @@ const MIN_DURATION = 1900; // Snappy & enjoyable (~1.9s)
 const MAX_DURATION = 3500; // Safety fallback limit
 
 export function Preloader() {
-  const [removed, setRemoved] = useState(() => {
-    if (typeof window !== "undefined") {
-      return !!sessionStorage.getItem("hapyezta-loaded");
-    }
-    return false;
-  });
+  const [removed, setRemoved] = useState(false);
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [microcopyIndex, setMicrocopyIndex] = useState(0);

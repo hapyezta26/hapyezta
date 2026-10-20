@@ -15,4 +15,11 @@ export default defineConfig({
   nitro: {
     preset: "vercel",
   },
+  vite: {
+    server: {
+      watch: {
+        ignored: ["**/.vercel/**", "**/.output/**"],
+      },
+    },
+  },
 });
