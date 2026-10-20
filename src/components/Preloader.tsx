@@ -35,93 +35,90 @@ export function Preloader() {
       return;
     }
 
-    startTimeRef.current = Date.now();
-
-    // 1. Rotating microcopy every 900ms with fade
+    // 1. Rotating microcopy every 700ms with smooth fade
     const microcopyInterval = setInterval(() => {
       setMicrocopyFade(false);
       setTimeout(() => {
         setMicrocopyIndex((prev) => (prev + 1) % MICROCOPY_STEPS.length);
         setMicrocopyFade(true);
-      }, 200);
-    }, 900);
+      }, 150);
+    }, 700);
 
     // 2. Real asset tracking
-    let loadedWeight = 0;
-    const updateRealProgress = (weightIncrement: number) => {
-      loadedWeight += weightIncrement;
-      setTargetProgress((prev) => Math.min(95, Math.max(prev, loadedWeight)));
+    let assetsLoaded = 0;
+    const totalAssets = 4;
+
+    const onAssetLoaded = () => {
+      assetsLoaded += 1;
+      const progressPercent = Math.min(100, Math.round((assetsLoaded / totalAssets) * 100));
+      setTargetProgress((prev) => Math.max(prev, progressPercent));
     };
 
-    // Track fonts
+    // Track Fonts
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready
-        .then(() => updateRealProgress(30))
-        .catch(() => updateRealProgress(30));
+      document.fonts.ready.then(onAssetLoaded).catch(onAssetLoaded);
     } else {
-      updateRealProgress(30);
+      onAssetLoaded();
     }
 
-    // Track Logo image
+    // Track Logo
     const logoImage = new Image();
     logoImage.src = logoImg;
     if (logoImage.complete) {
-      updateRealProgress(25);
+      onAssetLoaded();
     } else {
-      logoImage.onload = () => updateRealProgress(25);
-      logoImage.onerror = () => updateRealProgress(25);
+      logoImage.onload = onAssetLoaded;
+      logoImage.onerror = onAssetLoaded;
     }
 
-    // Track Hero image
+    // Track Hero
     const heroImage = new Image();
     heroImage.src = heroImg;
     if (heroImage.complete) {
-      updateRealProgress(25);
+      onAssetLoaded();
     } else {
-      heroImage.onload = () => updateRealProgress(25);
-      heroImage.onerror = () => updateRealProgress(25);
+      heroImage.onload = onAssetLoaded;
+      heroImage.onerror = onAssetLoaded;
     }
 
-    // Track Window / DOM load
-    if (document.readyState === "complete") {
-      updateRealProgress(20);
+    // Track DOM readiness
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+      onAssetLoaded();
     } else {
-      const handleWindowLoad = () => updateRealProgress(20);
-      window.addEventListener("load", handleWindowLoad, { once: true });
+      window.addEventListener("DOMContentLoaded", onAssetLoaded, { once: true });
     }
 
-    // Safety timeout: forced 100% complete at 4s max
+    // Safety timeout: forced 100% at 1.4s max
     const maxTimeout = setTimeout(() => {
       setTargetProgress(100);
-    }, 4000);
+    }, 1400);
 
-    // Smooth interpolation loop (60fps)
+    // Smooth progress interpolation (ensures smooth 0 -> 100% transition)
     let animationFrameId: number;
     const updateInterpolation = () => {
       const elapsed = Date.now() - startTimeRef.current;
-      const minTimeElapsed = elapsed >= 900;
-
-      // If target reached high and min time met, finish
-      if (loadedWeight >= 90 && minTimeElapsed) {
-        setTargetProgress(100);
-      }
+      const minDurationMet = elapsed >= 950;
 
       setDisplayProgress((prev) => {
         if (isCompleteRef.current) return 100;
 
-        let step = (targetProgress - prev) * 0.12;
-        if (step < 0.4 && prev < targetProgress) step = 0.4;
-        const next = Math.min(targetProgress, prev + step);
+        // If time is passing, steadily advance progress towards target
+        const timeFactor = Math.min(100, (elapsed / 1000) * 100);
+        const currentTarget = Math.max(targetProgress, timeFactor);
+
+        let step = (currentTarget - prev) * 0.18;
+        if (step < 0.6 && prev < currentTarget) step = 0.6;
+        const next = Math.min(currentTarget, prev + step);
         const rounded = Math.round(next);
         progressRef.current = rounded;
 
-        if (rounded >= 100 && minTimeElapsed && !isCompleteRef.current) {
+        if (rounded >= 100 && minDurationMet && !isCompleteRef.current) {
           isCompleteRef.current = true;
           handleCompletion();
           return 100;
         }
 
-        return rounded;
+        return Math.min(100, rounded);
       });
 
       if (!isCompleteRef.current) {
