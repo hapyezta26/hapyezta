@@ -87,31 +87,103 @@
   }
 }
 
-/* Preloader Animations */
-@keyframes preloader-bounce {
+/* Preloader "Unwrap the Happy" Animations */
+@keyframes preloader-bounce-squish {
   0%, 100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1, 1);
+  }
+  38% {
+    transform: translateY(-18px) scale(0.95, 1.06);
+  }
+  68% {
+    transform: translateY(-4px) scale(1.02, 0.98);
+  }
+  82% {
+    transform: translateY(2px) scale(1.05, 0.97);
+  }
+}
+
+@keyframes preloader-shadow-breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.35;
+  }
+  38% {
+    transform: scale(0.72);
+    opacity: 0.18;
+  }
+  82% {
+    transform: scale(1.12);
+    opacity: 0.45;
+  }
+}
+
+@keyframes kawaii-float-1 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
   }
   50% {
-    transform: translateY(-12px) scale(0.95);
+    transform: translate(-6px, -14px) rotate(8deg);
   }
 }
 
-@keyframes preloader-progress {
+@keyframes kawaii-float-2 {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(8px, -18px) rotate(-10deg);
+  }
+}
+
+@keyframes kawaii-float-3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-4px, -10px) scale(1.08) rotate(5deg);
+  }
+}
+
+@keyframes washi-tape-pattern {
   0% {
-    transform: translateX(-100%);
+    background-position: 0 0;
   }
   100% {
-    transform: translateX(100%);
+    background-position: 28px 0;
   }
 }
 
-.animate-preloader-bounce {
-  animation: preloader-bounce 1.4s infinite ease-in-out;
+.animate-bounce-squish {
+  animation: preloader-bounce-squish 1.2s infinite ease-in-out;
 }
 
-.animate-preloader-progress {
-  animation: preloader-progress 1.6s infinite ease-in-out;
+.animate-shadow-breathe {
+  animation: preloader-shadow-breathe 1.2s infinite ease-in-out;
+}
+
+.animate-kawaii-float-1 {
+  animation: kawaii-float-1 3.5s infinite ease-in-out;
+}
+
+.animate-kawaii-float-2 {
+  animation: kawaii-float-2 4.2s infinite ease-in-out;
+}
+
+.animate-kawaii-float-3 {
+  animation: kawaii-float-3 3.8s infinite ease-in-out;
+}
+
+.washi-tape-bar {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.35) 0,
+    rgba(255, 255, 255, 0.35) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 28px 28px;
+  animation: washi-tape-pattern 1s linear infinite;
 }
 
 /* ── Marquee / ticker animation ── */
