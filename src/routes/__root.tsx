@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import logoImg from "../assets/logo.png";
+import faviconImg from "../assets/favicon.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Preloader } from "../components/Preloader";
 import { MobileNav } from "../components/MobileNav";
@@ -120,7 +121,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         rel: "icon",
         type: "image/png",
-        href: logoImg,
+        href: faviconImg,
+      },
+      {
+        rel: "apple-touch-icon",
+        href: faviconImg,
       },
     ],
   }),
