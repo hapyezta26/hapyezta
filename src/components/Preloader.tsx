@@ -9,8 +9,8 @@ const MICROCOPY_STEPS = [
   "Almost cute enough...",
 ];
 
-const MIN_DURATION = 2500; // Paced to be thoroughly enjoyable (~2.5s)
-const MAX_DURATION = 4200; // Safety fallback limit
+const MIN_DURATION = 1900; // Snappy & enjoyable (~1.9s)
+const MAX_DURATION = 3500; // Safety fallback limit
 
 export function Preloader() {
   const [removed, setRemoved] = useState(() => {
@@ -24,7 +24,6 @@ export function Preloader() {
   const [microcopyIndex, setMicrocopyIndex] = useState(0);
   const [microcopyFade, setMicrocopyFade] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
-  const [isPopExit, setIsPopExit] = useState(false);
 
   const startTimeRef = useRef<number>(Date.now());
   const targetProgressRef = useRef(20);
@@ -39,14 +38,14 @@ export function Preloader() {
 
     startTimeRef.current = Date.now();
 
-    // 1. Rotating microcopy every ~750ms with smooth fade
+    // 1. Rotating microcopy every ~500ms with snappy fade
     const microcopyInterval = setInterval(() => {
       setMicrocopyFade(false);
       setTimeout(() => {
         setMicrocopyIndex((prev) => (prev + 1) % MICROCOPY_STEPS.length);
         setMicrocopyFade(true);
-      }, 180);
-    }, 750);
+      }, 140);
+    }, 500);
 
     // 2. Real asset tracking
     let assetsLoaded = 0;
@@ -88,9 +87,10 @@ export function Preloader() {
     // Safety timeout: forced complete if network/assets stall
     const maxTimeout = setTimeout(() => {
       targetProgressRef.current = 100;
+      handleCompletion();
     }, MAX_DURATION);
 
-    // 3. Smooth, delightful progress interpolation
+    // 3. Immediately reveal home page when 100% is reached
     let animationFrameId: number;
 
     const handleCompletion = () => {
@@ -101,18 +101,13 @@ export function Preloader() {
         sessionStorage.setItem("hapyezta-loaded", "true");
       } catch (_) {}
 
-      // Logo pops up joyfully
-      setIsPopExit(true);
+      // Immediately trigger exit fade
+      setIsExiting(true);
 
-      // Begin gift box split opening after small beat
-      setTimeout(() => {
-        setIsExiting(true);
-      }, 220);
-
-      // Clean unmount from DOM after curtain slide finishes
+      // Immediately unmount to reveal the home page without delay
       setTimeout(() => {
         setRemoved(true);
-      }, 950);
+      }, 120);
     };
 
     const updateInterpolation = () => {
@@ -121,25 +116,26 @@ export function Preloader() {
       const elapsed = Date.now() - startTimeRef.current;
       const timeRatio = Math.min(1, elapsed / MIN_DURATION);
 
-      // Smooth pacing curve (starts lively, glides steadily to 100%)
+      // Smooth pacing curve (glides steadily from 0 to 100%)
       const pacedTimeProgress = Math.round(
-        (1 - Math.pow(1 - timeRatio, 1.8)) * 100
+        (1 - Math.pow(1 - timeRatio, 1.7)) * 100
       );
 
-      // If assets aren't done yet, cap progress at 85% until they finish or time expires
-      const assetCap = targetProgressRef.current >= 100 || elapsed >= MIN_DURATION ? 100 : 85;
+      // If assets aren't done yet, cap progress at 95% until they finish or time expires
+      const assetCap = targetProgressRef.current >= 100 || elapsed >= MIN_DURATION ? 100 : 95;
       const calculatedTarget = Math.min(assetCap, pacedTimeProgress);
 
       setDisplayProgress((prev) => {
-        if (prev >= 100) return 100;
+        if (isCompleteRef.current) return 100;
 
         let next = prev;
         if (prev < calculatedTarget) {
-          const step = Math.max(1, Math.round((calculatedTarget - prev) * 0.22));
+          const step = Math.max(1, Math.round((calculatedTarget - prev) * 0.28));
           next = Math.min(calculatedTarget, prev + step);
         }
 
-        if (next >= 100 && elapsed >= MIN_DURATION && !isCompleteRef.current) {
+        // The moment it hits 100%, immediately show the home page!
+        if (next >= 100) {
           handleCompletion();
           return 100;
         }
@@ -166,21 +162,12 @@ export function Preloader() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 z-50 pointer-events-none select-none overflow-hidden"
+      className={`fixed inset-0 z-50 pointer-events-none select-none overflow-hidden transition-opacity duration-150 ease-out ${
+        isExiting ? "opacity-0" : "opacity-100"
+      }`}
     >
-      {/* ── Top Half Curtain (Gift Box Lid) ── */}
-      <div
-        className={`absolute inset-x-0 top-0 h-1/2 bg-[#fff8ec] border-b-2 border-yellow/20 transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)] ${
-          isExiting ? "-translate-y-full" : "translate-y-0"
-        }`}
-      />
-
-      {/* ── Bottom Half Curtain (Gift Box Base) ── */}
-      <div
-        className={`absolute inset-x-0 bottom-0 h-1/2 bg-[#fff8ec] border-t-2 border-yellow/20 transition-transform duration-700 ease-[cubic-bezier(0.77,0,0.175,1)] ${
-          isExiting ? "translate-y-full" : "translate-y-0"
-        }`}
-      />
+      {/* ── Background Curtain (Clean pastel base) ── */}
+      <div className="absolute inset-0 bg-[#fff8ec]" />
 
       {/* ── Center Stage & Floating Elements ── */}
       <div
@@ -259,12 +246,8 @@ export function Preloader() {
 
         {/* ── Main Content Core ── */}
         <div className="relative flex flex-col items-center justify-center my-auto">
-          {/* Logo with Bounce & Squish + Pop-up on Exit */}
-          <div
-            className={`relative flex flex-col items-center transition-transform duration-300 ${
-              isPopExit ? "scale-115 -translate-y-2" : "animate-bounce-squish"
-            }`}
-          >
+          {/* Mascot with Bounce & Squish */}
+          <div className="relative flex flex-col items-center animate-bounce-squish">
             <div className="w-24 h-24 sm:w-28 sm:h-28 mb-2 relative">
               <img
                 src={mascotImg}
