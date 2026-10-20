@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import logoImg from "@/assets/logo.png";
+import mascotImg from "@/assets/favicon.png";
 import heroImg from "@/assets/hero.jpg";
 
 const MICROCOPY_STEPS = [
@@ -8,6 +8,9 @@ const MICROCOPY_STEPS = [
   "Sprinkling stickers...",
   "Almost cute enough...",
 ];
+
+const MIN_DURATION = 2500; // Paced to be thoroughly enjoyable (~2.5s)
+const MAX_DURATION = 4200; // Safety fallback limit
 
 export function Preloader() {
   const [removed, setRemoved] = useState(() => {
@@ -18,14 +21,13 @@ export function Preloader() {
   });
 
   const [displayProgress, setDisplayProgress] = useState(0);
-  const [targetProgress, setTargetProgress] = useState(15);
   const [microcopyIndex, setMicrocopyIndex] = useState(0);
   const [microcopyFade, setMicrocopyFade] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
   const [isPopExit, setIsPopExit] = useState(false);
 
   const startTimeRef = useRef<number>(Date.now());
-  const progressRef = useRef(0);
+  const targetProgressRef = useRef(20);
   const isCompleteRef = useRef(false);
 
   useEffect(() => {
@@ -35,23 +37,25 @@ export function Preloader() {
       return;
     }
 
-    // 1. Rotating microcopy every 700ms with smooth fade
+    startTimeRef.current = Date.now();
+
+    // 1. Rotating microcopy every ~750ms with smooth fade
     const microcopyInterval = setInterval(() => {
       setMicrocopyFade(false);
       setTimeout(() => {
         setMicrocopyIndex((prev) => (prev + 1) % MICROCOPY_STEPS.length);
         setMicrocopyFade(true);
-      }, 150);
-    }, 700);
+      }, 180);
+    }, 750);
 
     // 2. Real asset tracking
     let assetsLoaded = 0;
-    const totalAssets = 4;
+    const totalAssets = 3;
 
     const onAssetLoaded = () => {
       assetsLoaded += 1;
       const progressPercent = Math.min(100, Math.round((assetsLoaded / totalAssets) * 100));
-      setTargetProgress((prev) => Math.max(prev, progressPercent));
+      targetProgressRef.current = Math.max(targetProgressRef.current, progressPercent);
     };
 
     // Track Fonts
@@ -61,14 +65,14 @@ export function Preloader() {
       onAssetLoaded();
     }
 
-    // Track Logo
-    const logoImage = new Image();
-    logoImage.src = logoImg;
-    if (logoImage.complete) {
+    // Track Mascot
+    const mascot = new Image();
+    mascot.src = mascotImg;
+    if (mascot.complete) {
       onAssetLoaded();
     } else {
-      logoImage.onload = onAssetLoaded;
-      logoImage.onerror = onAssetLoaded;
+      mascot.onload = onAssetLoaded;
+      mascot.onerror = onAssetLoaded;
     }
 
     // Track Hero
@@ -81,44 +85,66 @@ export function Preloader() {
       heroImage.onerror = onAssetLoaded;
     }
 
-    // Track DOM readiness
-    if (document.readyState === "complete" || document.readyState === "interactive") {
-      onAssetLoaded();
-    } else {
-      window.addEventListener("DOMContentLoaded", onAssetLoaded, { once: true });
-    }
-
-    // Safety timeout: forced 100% at 1.4s max
+    // Safety timeout: forced complete if network/assets stall
     const maxTimeout = setTimeout(() => {
-      setTargetProgress(100);
-    }, 1400);
+      targetProgressRef.current = 100;
+    }, MAX_DURATION);
 
-    // Smooth progress interpolation (ensures smooth 0 -> 100% transition)
+    // 3. Smooth, delightful progress interpolation
     let animationFrameId: number;
+
+    const handleCompletion = () => {
+      if (isCompleteRef.current) return;
+      isCompleteRef.current = true;
+
+      try {
+        sessionStorage.setItem("hapyezta-loaded", "true");
+      } catch (_) {}
+
+      // Logo pops up joyfully
+      setIsPopExit(true);
+
+      // Begin gift box split opening after small beat
+      setTimeout(() => {
+        setIsExiting(true);
+      }, 220);
+
+      // Clean unmount from DOM after curtain slide finishes
+      setTimeout(() => {
+        setRemoved(true);
+      }, 950);
+    };
+
     const updateInterpolation = () => {
+      if (isCompleteRef.current) return;
+
       const elapsed = Date.now() - startTimeRef.current;
-      const minDurationMet = elapsed >= 950;
+      const timeRatio = Math.min(1, elapsed / MIN_DURATION);
+
+      // Smooth pacing curve (starts lively, glides steadily to 100%)
+      const pacedTimeProgress = Math.round(
+        (1 - Math.pow(1 - timeRatio, 1.8)) * 100
+      );
+
+      // If assets aren't done yet, cap progress at 85% until they finish or time expires
+      const assetCap = targetProgressRef.current >= 100 || elapsed >= MIN_DURATION ? 100 : 85;
+      const calculatedTarget = Math.min(assetCap, pacedTimeProgress);
 
       setDisplayProgress((prev) => {
-        if (isCompleteRef.current) return 100;
+        if (prev >= 100) return 100;
 
-        // If time is passing, steadily advance progress towards target
-        const timeFactor = Math.min(100, (elapsed / 1000) * 100);
-        const currentTarget = Math.max(targetProgress, timeFactor);
+        let next = prev;
+        if (prev < calculatedTarget) {
+          const step = Math.max(1, Math.round((calculatedTarget - prev) * 0.22));
+          next = Math.min(calculatedTarget, prev + step);
+        }
 
-        let step = (currentTarget - prev) * 0.18;
-        if (step < 0.6 && prev < currentTarget) step = 0.6;
-        const next = Math.min(currentTarget, prev + step);
-        const rounded = Math.round(next);
-        progressRef.current = rounded;
-
-        if (rounded >= 100 && minDurationMet && !isCompleteRef.current) {
-          isCompleteRef.current = true;
+        if (next >= 100 && elapsed >= MIN_DURATION && !isCompleteRef.current) {
           handleCompletion();
           return 100;
         }
 
-        return Math.min(100, rounded);
+        return next;
       });
 
       if (!isCompleteRef.current) {
@@ -128,32 +154,12 @@ export function Preloader() {
 
     animationFrameId = requestAnimationFrame(updateInterpolation);
 
-    const handleCompletion = () => {
-      // Mark as seen for session
-      try {
-        sessionStorage.setItem("hapyezta-loaded", "true");
-      } catch (_) {}
-
-      // Logo pops up at 100%
-      setIsPopExit(true);
-
-      // Begin gift box split opening
-      setTimeout(() => {
-        setIsExiting(true);
-      }, 150);
-
-      // Clean unmount from DOM after gift box curtains finish sliding
-      setTimeout(() => {
-        setRemoved(true);
-      }, 850);
-    };
-
     return () => {
       clearInterval(microcopyInterval);
       clearTimeout(maxTimeout);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [targetProgress]);
+  }, []);
 
   if (removed) return null;
 
@@ -259,15 +265,15 @@ export function Preloader() {
               isPopExit ? "scale-115 -translate-y-2" : "animate-bounce-squish"
             }`}
           >
-            <div className="w-28 h-28 sm:w-32 sm:h-32 mb-2 relative">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 mb-2 relative">
               <img
-                src={logoImg}
-                alt="Hapyezta Logo"
-                className="w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(244,117,35,0.15)]"
+                src={mascotImg}
+                alt="Hapyezta Mascot"
+                className="w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(244,117,35,0.18)]"
               />
             </div>
 
-            {/* Breathing soft shadow beneath logo */}
+            {/* Breathing soft shadow beneath mascot */}
             <div className="w-20 h-3 bg-purple/15 rounded-[100%] filter blur-[3px] animate-shadow-breathe -mt-1" />
           </div>
 
